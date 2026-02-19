@@ -32,3 +32,4 @@ build/
 
 # Output images (generated)
 output/
+temp/
