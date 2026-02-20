@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 
+from neural_network_class import NeuralNetwork
+
 plt.rcParams["figure.dpi"] = 120
 
 State = Tuple[int, int]  # (row, col)
@@ -426,13 +428,19 @@ class MazeProblem(SearchProblem):
         grid: np.ndarray,
         start: Tuple[int, int],
         goals: List[Tuple[int, int]],
+        image: Optional[np.ndarray] = None,
+        nn: Optional[NeuralNetwork] = None,
+        cost: Optional[dict] = None,
+        tile_size: int = 10,
     ) -> None:
         self.grid = grid
         self.rows, self.cols = grid.shape
         self._start = start
         self._goals: Set[Tuple[int, int]] = set(goals)
-
-    # ── Interfaz SearchProblem ────────────────────────────────────────────────
+        self.image = image
+        self.nn = nn
+        self.cost = cost
+        self.tile_size = tile_size
 
     def initial_state(self) -> State:
         return self._start
@@ -454,5 +462,38 @@ class MazeProblem(SearchProblem):
         return (state[0] + action[0], state[1] + action[1])
 
     def step_cost(self, state: State, action: Action, next_state: State) -> float:
-        # Task 1.3: costo uniforme = 1 para toda celda no-pared
-        return 1.0
+        """
+        Task 2.2: Costo dinámico basado en predicción de red neuronal.
+        Si no hay red neuronal, retorna costo uniforme = 1.0
+        
+        1. Ubica el tile destino en la imagen original
+        2. Extrae el color RGB promedio del tile
+        3. Predice la clase con la red neuronal
+        4. Convierte a costo usando el diccionario
+        """
+        # Si no hay red neuronal, retornar costo uniforme (Task 1.3)
+        if self.nn is None or self.image is None or self.cost is None:
+            return 1.0
+        
+        # 1. Ubicar el tile en píxeles
+        row_grid, col_grid = next_state
+        row_px = row_grid * self.tile_size
+        col_px = col_grid * self.tile_size
+        
+        # 2. Extraer el tile de la imagen original
+        tile = self.image[
+            row_px : row_px + self.tile_size,
+            col_px : col_px + self.tile_size
+        ]
+        
+        # 3. Calcular color promedio y normalizar a [0, 1]
+        rgb_promedio = tile.mean(axis=(0, 1))  # (R, G, B) en [0, 255]
+        rgb_normalizado = rgb_promedio / 255.0  # [0, 1]
+        
+        # 4. Predecir clase con la red neuronal
+        clase_idx = self.nn.predict([rgb_normalizado])[0]
+        
+        # 5. Obtener costo del diccionario (clave = índice de clase)
+        costo = self.cost[clase_idx]
+        
+        return float(costo)
