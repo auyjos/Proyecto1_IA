@@ -178,9 +178,6 @@ class NeuralNetwork:
             avg_loss = epoch_loss / num_batches
             losses.append(avg_loss)
             
-            # Imprimir cada 10 epochs
-            if (epoch + 1) % 10 == 0:
-                print(f"Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}")
         
         print(f"Entrenamiento completado. Loss final: {losses[-1]:.4f}")
         return losses
